@@ -1,0 +1,16 @@
+{
+  "name": "monarena-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.5",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ethers": "^6.9.0"
+  }
+}
