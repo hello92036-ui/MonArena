@@ -124,6 +124,7 @@ io.on("connection", (socket) => {
     socket.on("create-room", ({ roomId, userId }) => {
         rooms[roomId] = { host: userId, players: [createPlayer(userId)], turn: 0, started: false, lastDice: null, lastDiceDisplay: null, sixCount: 0 };
         socket.join(roomId); emitRoom(roomId);
+    io.emit("roomsUpdated", Object.entries(rooms).map(([id, r]) => ({ id, name: r.host?.slice(0,6)+"s Arena", entryFee: 1, players: r.players.length })));
     });
 
     socket.on("join-room", ({ roomId, userId }) => {
