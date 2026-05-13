@@ -12,7 +12,7 @@ const WALLETS = [
 export function WalletModal({ open, onClose, onConnected }) {
   const [phase, setPhase] = useState("select");
   const [chosen, setChosen] = useState(null);
-  const { connect, connectors } = useConnect();
+  const { connectAsync, connectors } = useConnect();
 
   const handleConnect = async (wallet) => {
     setChosen(wallet);
@@ -21,10 +21,12 @@ export function WalletModal({ open, onClose, onConnected }) {
       const connector = wallet.id === "walletconnect"
         ? connectors.find(c => c.id === "walletConnect")
         : connectors.find(c => c.id === "injected");
-      await connect({ connector });
+      
+      await connectAsync({ connector });
       setPhase("connected");
       setTimeout(() => onConnected?.(), 1000);
     } catch (e) {
+      console.error(e);
       setPhase("error");
     }
   };
@@ -35,11 +37,9 @@ export function WalletModal({ open, onClose, onConnected }) {
     <>
       <div onClick={phase==="connecting"?undefined:onClose} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(15,27,61,0.42)",backdropFilter:"blur(6px)",animation:"fadeIn 0.22s ease"}}/>
       <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:301,maxWidth:520,margin:"0 auto",background:"hsl(36 100% 97%)",borderRadius:"24px 24px 0 0",boxShadow:"0 -8px 40px -8px rgba(40,30,20,0.18)",animation:"slideUp 0.32s cubic-bezier(0.16,1,0.3,1)",paddingBottom:"max(20px,env(safe-area-inset-bottom))"}}>
-
         <div style={{display:"flex",justifyContent:"center",padding:"10px 0 2px"}}>
           <div style={{width:36,height:4,borderRadius:999,background:"hsl(36 30% 82%)"}}/>
         </div>
-
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px 0"}}>
           <div style={{fontFamily:"var(--font-display)",fontSize:20,fontWeight:800,color:"var(--ink)"}}>
             {phase==="select"&&"Connect Wallet"}
@@ -53,7 +53,6 @@ export function WalletModal({ open, onClose, onConnected }) {
             </button>
           )}
         </div>
-
         {phase==="select"&&(
           <div style={{padding:"14px 14px 0",display:"flex",flexDirection:"column",gap:8}}>
             {WALLETS.map(w=>(
@@ -65,13 +64,8 @@ export function WalletModal({ open, onClose, onConnected }) {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             ))}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"10px 0 4px"}}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="mg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#FFC23D"/><stop offset="100%" stopColor="#FF7A1A"/></linearGradient></defs><circle cx="12" cy="12" r="11" fill="url(#mg)"/><path d="M12 5.5L17.5 12L12 18.5L6.5 12Z" fill="white" opacity="0.95"/></svg>
-              <span style={{fontSize:11,color:"var(--muted)",fontWeight:700}}>Monad Mainnet · Chain ID 143</span>
-            </div>
           </div>
         )}
-
         {phase==="connecting"&&(
           <div style={{padding:"32px 18px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
             <div style={{width:64,height:64,borderRadius:"50%",border:`3px solid ${chosen?.color}22`,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -83,29 +77,16 @@ export function WalletModal({ open, onClose, onConnected }) {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={chosen?.color} strokeWidth="2" strokeLinecap="round"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M16 12h2"/><path d="M2 10h20"/></svg>
               </div>
             </div>
-            <div style={{fontSize:13,color:"var(--muted)",fontWeight:600,textAlign:"center"}}>
-              Open {chosen?.name} and approve
-            </div>
+            <div style={{fontSize:13,color:"var(--muted)",fontWeight:600,textAlign:"center"}}>Open {chosen?.name} and approve</div>
             <button onClick={onClose} style={{padding:"8px 22px",borderRadius:999,border:"1px solid var(--border)",background:"white",cursor:"pointer",fontSize:12.5,fontWeight:700,color:"var(--muted)",fontFamily:"var(--font-body)"}}>Cancel</button>
           </div>
         )}
-
         {phase==="connected"&&(
           <div style={{padding:"32px 18px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
             <div style={{width:64,height:64,borderRadius:"50%",background:"linear-gradient(135deg,#3EDD9B,#1BAD6E)",display:"flex",alignItems:"center",justifyContent:"center",animation:"pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both"}}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.8" strokeLinecap="round"><polyline points="20,6 9,17 4,12"/></svg>
             </div>
             <div style={{fontSize:13,color:"var(--muted)",fontWeight:600}}>Entering the arena…</div>
-          </div>
-        )}
-
-        {phase==="error"&&(
-          <div style={{padding:"32px 18px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
-            <div style={{width:64,height:64,borderRadius:"50%",background:"#FFF0F0",border:"2px solid #FFCDD0",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FF5A5F" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-            </div>
-            <div style={{fontSize:13,color:"var(--muted)",fontWeight:600,textAlign:"center"}}>Could not connect. Check your wallet is installed.</div>
-            <button onClick={()=>setPhase("select")} style={{padding:"10px 28px",borderRadius:999,border:"none",background:"linear-gradient(180deg,hsl(14 100% 70%),hsl(8 95% 60%))",color:"white",cursor:"pointer",fontSize:13,fontWeight:800,fontFamily:"var(--font-body)"}}>Try Again</button>
           </div>
         )}
       </div>
