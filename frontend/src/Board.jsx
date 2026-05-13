@@ -1,27 +1,82 @@
 import { COMMON_PATH, HOME_STRETCHES, BASE_POSITIONS } from './gridMap';
 
+const Piece = ({ color, canClick, number }) => (
+  <div style={{
+    width: '85%', height: '85%', position: 'relative',
+    filter: canClick ? `drop-shadow(0 0 6px white)` : 'drop-shadow(0 4px 4px rgba(0,0,0,0.4))',
+    transform: canClick ? 'scale(1.15) translateY(-2px)' : 'scale(1)',
+    transition: 'all 0.2s', zIndex: 10
+  }}>
+    <svg viewBox="0 0 100 100" width="100%" height="100%">
+      <circle cx="50" cy="50" r="45" fill="#fff" />
+      <circle cx="50" cy="50" r="38" fill={color} stroke="rgba(0,0,0,0.15)" strokeWidth="4"/>
+      <circle cx="50" cy="50" r="22" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="3"/>
+      <ellipse cx="38" cy="30" rx="12" ry="6" fill="#fff" opacity="0.6" transform="rotate(-30 38 30)"/>
+      <text x="50" y="55" fontFamily="Arial" fontSize="24" fontWeight="bold" fill="#fff" textAnchor="middle" dominantBaseline="middle" opacity="0.8">{number}</text>
+    </svg>
+  </div>
+);
+
+const BaseArea = ({ color, r, c }) => (
+  <div style={{
+    gridArea: `${r} / ${c} / ${r+6} / ${c+6}`,
+    backgroundColor: color, border: "2px solid #222",
+    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2,
+    boxShadow: "inset 0 0 15px rgba(0,0,0,0.3)"
+  }}>
+    <div style={{
+      width: '65%', height: '65%', backgroundColor: '#fff', borderRadius: '15%',
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr',
+      gap: '15%', padding: '15%', boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+    }}>
+       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
+       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
+       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
+       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
+    </div>
+  </div>
+);
+
+const Star = () => (
+  <svg viewBox="0 0 24 24" width="70%" height="70%">
+    <path fill="rgba(0,0,0,0.15)" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+);
+
+const CenterGoal = () => (
+  <div style={{ gridArea: "7 / 7 / 10 / 10", zIndex: 2 }}>
+    <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ display: 'block' }}>
+      <polygon points="0,0 100,0 50,50" fill="#ffd24d" />
+      <polygon points="100,0 100,100 50,50" fill="#4d4dff" />
+      <polygon points="0,100 100,100 50,50" fill="#ff4d4d" />
+      <polygon points="0,0 0,100 50,50" fill="#4dff4d" />
+      <line x1="0" y1="0" x2="100" y2="100" stroke="#222" strokeWidth="2"/>
+      <line x1="100" y1="0" x2="0" y2="100" stroke="#222" strokeWidth="2"/>
+      <rect width="100" height="100" fill="none" stroke="#222" strokeWidth="2"/>
+    </svg>
+  </div>
+);
+
 export default function Board({ room, socket, roomId, userId }) {
   if (!room) return <div style={{marginTop: 20}}>Connecting to Arena...</div>;
 
   const colors = ["#ff4d4d", "#4dff4d", "#ffd24d", "#4d4dff"];
   const START_OFFSETS = [0, 13, 26, 39];
   const SAFE_CELLS = [
-    {r:13, c:6, color: "#ffcccc"}, {r:6, c:1, color: "#ccffcc"}, 
+    {r:13, c:6, color: "#ffcccc"}, {r:6, c:1, color: "#ccffcc"},
     {r:1, c:8, color: "#ffffcc"}, {r:8, c:13, color: "#ccccff"},
-    {r:8, c:2, color: "#e6e6e6"}, {r:2, c:6, color: "#e6e6e6"},
-    {r:6, c:12, color: "#e6e6e6"}, {r:12, c:8, color: "#e6e6e6"}
+    {r:8, c:2, color: "#e6e6e6"}, {r:2, c:8, color: "#e6e6e6"},
+    {r:6, c:12, color: "#e6e6e6"}, {r:12, c:6, color: "#e6e6e6"}
   ];
 
   const getGridPosition = (playerIndex, pieceIndex, pos) => {
     if (pos === -1) return BASE_POSITIONS[playerIndex][pieceIndex];
     if (pos === 57) return { r: 7, c: 7 }; // Goal
-    
     // Logic: 0-50 are perimeter steps (51 total cells)
     if (pos < 51) {
       const globalPos = (pos + START_OFFSETS[playerIndex]) % 52;
       return COMMON_PATH[globalPos];
     }
-    
     // Logic: 51-56 are home stretch steps
     return HOME_STRETCHES[playerIndex][pos - 51];
   };
@@ -44,23 +99,27 @@ export default function Board({ room, socket, roomId, userId }) {
           const r = Math.floor(i / 15); const c = i % 15;
           const safeData = SAFE_CELLS.find(s => s.r === r && s.c === c);
           let bg = "#fff";
-          
-          // Background Color Logic for Home Stretches
+
           if (safeData) bg = safeData.color;
           else if (r === 7 && c >= 1 && c <= 6) bg = "#ccffcc"; // Green
           else if (c === 7 && r >= 1 && r <= 6) bg = "#ffffcc"; // Yellow
           else if (r === 7 && c >= 8 && c <= 13) bg = "#ccccff"; // Blue
           else if (c === 7 && r >= 8 && r <= 13) bg = "#ffcccc"; // Red
 
-          return <div key={i} style={{ backgroundColor: bg, gridRow: r+1, gridColumn: c+1, display: "flex", justifyContent: "center", alignItems: "center", color: "#ccc" }}>{safeData ? "★" : ""}</div>;
+          return (
+            <div key={i} style={{ backgroundColor: bg, gridRow: r+1, gridColumn: c+1, display: "flex", justifyContent: "center", alignItems: "center" }}>
+              {safeData && <Star />}
+            </div>
+          );
         })}
 
-        {/* Bases & Finish */}
-        <div style={{gridArea: "1 / 1 / 7 / 7", background: "#4dff4d", zIndex: 2, border: "2px solid #333"}}></div>
-        <div style={{gridArea: "1 / 10 / 7 / 16", background: "#ffd24d", zIndex: 2, border: "2px solid #333"}}></div>
-        <div style={{gridArea: "10 / 1 / 16 / 7", background: "#ff4d4d", zIndex: 2, border: "2px solid #333"}}></div>
-        <div style={{gridArea: "10 / 10 / 16 / 16", background: "#4d4dff", zIndex: 2, border: "2px solid #333"}}></div>
-        <div style={{gridArea: "7 / 7 / 10 / 10", background: "gold", zIndex: 2, display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "bold"}}>GOAL</div>
+        {/* Home Bases matching your specific indices */}
+        <BaseArea color="#4dff4d" r={1} c={1} />    {/* Green Top-Left */}
+        <BaseArea color="#ffd24d" r={1} c={10} />   {/* Yellow Top-Right */}
+        <BaseArea color="#ff4d4d" r={10} c={1} />   {/* Red Bottom-Left */}
+        <BaseArea color="#4d4dff" r={10} c={10} />  {/* Blue Bottom-Right */}
+
+        <CenterGoal />
 
         {/* Pieces */}
         {room.players.map((player, pIndex) =>
@@ -72,12 +131,12 @@ export default function Board({ room, socket, roomId, userId }) {
                 key={`${pIndex}-${pieceIndex}`}
                 onClick={() => canClick && socket.emit("move-piece", { roomId, pieceIndex, userId })}
                 style={{
-                  gridRow: r + 1, gridColumn: c + 1, backgroundColor: colors[pIndex], borderRadius: "50%",
-                  margin: "15%", border: "2px solid #000", zIndex: 10, cursor: canClick ? "pointer" : "default",
-                  boxShadow: canClick ? "0 0 8px 2px white" : "none", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold"
+                  gridRow: r + 1, gridColumn: c + 1, zIndex: 10,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: canClick ? "pointer" : "default"
                 }}
               >
-                {pieceIndex + 1}
+                <Piece color={colors[pIndex]} canClick={canClick} number={pieceIndex + 1} />
               </div>
             );
           })
