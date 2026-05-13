@@ -19,7 +19,9 @@ const HOMES = [
   { id: "y", base: "#FFC23D", hi: "#FFD97A", lo: "#D89400", x: 9 * C, y: 0     },
   { id: "b", base: "#3DA9FF", hi: "#7CC4FF", lo: "#1D7BCB", x: 9 * C, y: 9 * C },
 ];
-const SAFE_CELLS = [{ c:1,r:6},{c:8,r:1},{c:13,r:8},{c:6,r:13},{c:2,r:6},{c:6,r:2},{c:12,r:8},{c:8,r:12}];
+
+// PERMANENT STAR FIX: {c:2,r:8} and {c:12,r:6}
+const SAFE_CELLS = [{ c:1,r:6},{c:8,r:1},{c:13,r:8},{c:6,r:13},{c:2,r:8},{c:6,r:2},{c:12,r:6},{c:8,r:12}];
 const ENTRY_CELLS = [{ x:C,y:6*C,f:"#FF5A5F"},{x:8*C,y:C,f:"#34D399"},{x:13*C,y:8*C,f:"#FFC23D"},{x:6*C,y:13*C,f:"#3DA9FF"}];
 
 const START_OFFSETS = [0, 13, 26, 39];
@@ -36,7 +38,6 @@ const HOME_STRETCH = [
   [[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]],
 ];
 const PIECE_COLORS = ["#FF5A5F","#34D399","#FFC23D","#3DA9FF"];
-const PIECE_RIMS   = ["#C7363B","#14935E","#D89400","#1D7BCB"];
 
 function getPieceXY(playerIndex, relPos) {
   if (relPos < 0) return null;
@@ -67,26 +68,33 @@ function GStar({ cx, cy }) {
   return <polygon points={p.join(" ")} fill="#C9B98A" opacity="0.9" />;
 }
 
-function GPiece({ cx, cy, color, rim, highlight, onClick }) {
+// PREMIUM LUDO KING PIECES
+function GPiece({ cx, cy, color, highlight, onClick }) {
   return (
-    <g onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
-      <ellipse cx={cx} cy={cy + 2} rx="9" ry="2.5" fill="rgba(0,0,0,0.2)" />
-      {highlight && <circle cx={cx} cy={cy} r="13" fill="white" opacity="0.5" />}
-      <circle cx={cx} cy={cy} r="10" fill={rim} />
-      <circle cx={cx} cy={cy} r="8.5" fill={color} />
-      <ellipse cx={cx - 2} cy={cy - 2.5} rx="3.5" ry="2" fill="white" opacity="0.5" />
+    <g onClick={onClick} style={{ 
+      cursor: onClick ? "pointer" : "default", 
+      filter: highlight ? `drop-shadow(0 0 8px white) drop-shadow(0 0 12px ${color})` : 'drop-shadow(0 5px 5px rgba(0,0,0,0.5))', 
+      transform: highlight ? 'scale(1.2)' : 'scale(1)', 
+      transformOrigin: `${cx}px ${cy}px`, 
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' 
+    }}>
+      <circle cx={cx} cy={cy} r="13" fill="#fff" stroke="rgba(0,0,0,0.15)" strokeWidth="1.5" />
+      <circle cx={cx} cy={cy} r="10.5" fill={color} />
+      <circle cx={cx} cy={cy} r="6" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+      <ellipse cx={cx-3} cy={cy-4} rx="3.5" ry="2" fill="#fff" opacity="0.8" transform={`rotate(-45 ${cx-3} ${cy-4})`} />
     </g>
   );
 }
 
+// PREMIUM BASES WITHOUT FAKE PIECES BLOCKING THE VIEW
 function GHome({ h }) {
-  const ix = h.x + C, iy = h.y + C, iw = 4 * C;
+  const ix = h.x + C, iy = h.y + C;
   const sl = [{ x: ix + C, y: iy + C }, { x: ix + 3 * C, y: iy + C }, { x: ix + C, y: iy + 3 * C }, { x: ix + 3 * C, y: iy + 3 * C }];
   return (
     <g>
-      <rect x={h.x + 3} y={h.y + 3} width={6 * C - 6} height={6 * C - 6} rx="16" fill={`url(#f${h.id})`} stroke="rgba(0,0,0,0.06)" />
-      <rect x={ix} y={iy} width={iw} height={iw} rx="10" fill="#FFFCF6" stroke="rgba(0,0,0,0.05)" />
-      {sl.map((s, i) => <GPiece key={i} cx={s.x} cy={s.y} color={h.base} rim={h.lo} />)}
+      <rect x={h.x + 3} y={h.y + 3} width={6 * C - 6} height={6 * C - 6} rx="16" fill={h.base} stroke="rgba(0,0,0,0.2)" strokeWidth="2" />
+      <rect x={ix - C*0.5} y={iy - C*0.5} width={5 * C} height={5 * C} rx="12" fill="#fff" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.3))" />
+      {sl.map((s, i) => <circle key={`p-${i}`} cx={s.x} cy={s.y} r="14" fill="none" stroke={h.base} strokeWidth="3" opacity="0.3" />)}
     </g>
   );
 }
@@ -117,8 +125,7 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
           const [pcx, pcy] = hpts[pieceIdx] || hpts[0];
           allPieces.push(
             <GPiece
-              key={`${pIdx}-${pieceIdx}`} cx={pcx} cy={pcy}
-              color={PIECE_COLORS[pIdx]} rim={PIECE_RIMS[pIdx]}
+              key={`${pIdx}-${pieceIdx}`} cx={pcx} cy={pcy} color={PIECE_COLORS[pIdx]}
               highlight={isMovable} onClick={isMovable ? () => onPieceClick(pieceIdx) : null}
             />
           );
@@ -128,8 +135,7 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
         if (!xy) return;
         allPieces.push(
           <GPiece
-            key={`${pIdx}-${pieceIdx}`} cx={xy.x} cy={xy.y}
-            color={PIECE_COLORS[pIdx]} rim={PIECE_RIMS[pIdx]}
+            key={`${pIdx}-${pieceIdx}`} cx={xy.x} cy={xy.y} color={PIECE_COLORS[pIdx]}
             highlight={isMovable} onClick={isMovable ? () => onPieceClick(pieceIdx) : null}
           />
         );
@@ -138,18 +144,9 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
   }
 
   return (
-    <svg viewBox={`0 0 ${BW} ${BW}`} width={size} height={size} style={{ display: "block", borderRadius: 16, boxShadow: "0 16px 48px -12px rgba(40,30,20,0.28)" }}>
+    <svg viewBox={`0 0 ${BW} ${BW}`} width={size} height={size} style={{ display: "block", borderRadius: 16, boxShadow: "0 16px 48px -12px rgba(40,30,20,0.3)" }}>
       <defs>
-        {HOMES.map(h => [
-          <linearGradient key={`f${h.id}`} id={`f${h.id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={h.hi} /><stop offset="55%" stopColor={h.base} /><stop offset="100%" stopColor={h.lo} />
-          </linearGradient>,
-        ])}
         <linearGradient id="lbg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FFFDF8" /><stop offset="100%" stopColor="#F1E7D3" /></linearGradient>
-        <linearGradient id="cxr2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FF8A8E" /><stop offset="1" stopColor="#C7363B" /></linearGradient>
-        <linearGradient id="cxg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#7BEAC0" /><stop offset="1" stopColor="#0E7E55" /></linearGradient>
-        <linearGradient id="cxy2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FFD97A" /><stop offset="1" stopColor="#B97800" /></linearGradient>
-        <linearGradient id="cxb2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#7CC4FF" /><stop offset="1" stopColor="#0D4D85" /></linearGradient>
       </defs>
       <rect width={BW} height={BW} rx="18" fill="url(#lbg2)" />
       <rect x="3" y="3" width={BW - 6} height={BW - 6} rx="14" fill="#FFFDF8" stroke="#EAD9B6" strokeWidth="1" />
@@ -159,12 +156,14 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
       {SAFE_CELLS.map((s, i) => <GStar key={i} cx={s.c * C + C / 2} cy={s.r * C + C / 2} />)}
       {HOMES.map(h => <GHome key={h.id} h={h} />)}
       <g transform={`translate(${6 * C},${6 * C})`}>
-        <rect width={3 * C} height={3 * C} fill="#FFFDF8" stroke="#EAD9B6" strokeWidth="0.8" />
-        <polygon points={`0,0 ${3 * C},0 ${1.5 * C},${1.5 * C}`} fill="url(#cxg2)" />
-        <polygon points={`${3 * C},0 ${3 * C},${3 * C} ${1.5 * C},${1.5 * C}`} fill="url(#cxy2)" />
-        <polygon points={`0,${3 * C} ${3 * C},${3 * C} ${1.5 * C},${1.5 * C}`} fill="url(#cxb2)" />
-        <polygon points={`0,0 0,${3 * C} ${1.5 * C},${1.5 * C}`} fill="url(#cxr2)" />
-        <circle cx={1.5 * C} cy={1.5 * C} r="7" fill="#FFFDF8" stroke="rgba(0,0,0,0.12)" />
+        <polygon points={`0,0 ${3 * C},0 ${1.5 * C},${1.5 * C}`} fill="#34D399" />
+        <polygon points={`${3 * C},0 ${3 * C},${3 * C} ${1.5 * C},${1.5 * C}`} fill="#FFC23D" />
+        <polygon points={`0,${3 * C} ${3 * C},${3 * C} ${1.5 * C},${1.5 * C}`} fill="#3DA9FF" />
+        <polygon points={`0,0 0,${3 * C} ${1.5 * C},${1.5 * C}`} fill="#FF5A5F" />
+        <line x1="0" y1="0" x2={3*C} y2={3*C} stroke="rgba(0,0,0,0.2)" strokeWidth="2"/>
+        <line x1={3*C} y1="0" x2="0" y2={3*C} stroke="rgba(0,0,0,0.2)" strokeWidth="2"/>
+        <rect width={3*C} height={3*C} fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="3"/>
+        <circle cx={1.5 * C} cy={1.5 * C} r="9" fill="#FFFDF8" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))" />
       </g>
       {allPieces}
     </svg>
@@ -226,7 +225,6 @@ export function GameRoom({ room, onLeave }) {
         const myIdx = data.players.findIndex(p => p.id?.toLowerCase() === address?.toLowerCase());
         const isMyTurnNow = data.players[data.turn]?.id?.toLowerCase() === address?.toLowerCase();
         if (isMyTurnNow && data.lastDice !== null && myIdx >= 0) {
-          // BUG FIX: Strictly parse dice as Number to prevent string equality failure
           const dice = Number(data.lastDice ?? data.lastDiceDisplay);
           const pieces = data.players[myIdx].pieces;
           const movable = [];
@@ -347,7 +345,7 @@ export function GameRoom({ room, onLeave }) {
           const isTurn = roomState.turn === i && roomState.started;
           const isMe = p.id?.toLowerCase() === address?.toLowerCase();
           return (
-            <div key={p.id} style={{ flexShrink: 0, padding: "6px 10px", borderRadius: 10, background: isTurn ? PIECE_COLORS[i] : "white", border: `2px solid ${isTurn ? PIECE_RIMS[i] : "hsl(36 30% 87%)"}`, opacity: isActive ? 1 : 0.4 }}>
+            <div key={p.id} style={{ flexShrink: 0, padding: "6px 10px", borderRadius: 10, background: isTurn ? PIECE_COLORS[i] : "white", border: `2px solid ${isTurn ? "#222" : "hsl(36 30% 87%)"}`, opacity: isActive ? 1 : 0.4 }}>
               <div style={{ fontSize: 10, fontWeight: "800", color: isTurn ? "white" : PIECE_COLORS[i] }}>{isMe ? "YOU" : `P${i + 1}`}</div>
               <div style={{ fontSize: 10, color: isTurn ? "rgba(255,255,255,0.8)" : "var(--muted)" }}>❤️ {p.lives}</div>
             </div>
@@ -356,7 +354,6 @@ export function GameRoom({ room, onLeave }) {
       </div>
 
       <div style={{ padding: "8px 16px 24px", marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* BUG FIX: Deposit button completely removed. CanStart check updated. */}
         {canStart && (
           <button onClick={handleStart} style={{ padding: "14px", borderRadius: 14, border: "none", background: "linear-gradient(180deg,#34D399,#14935E)", color: "white", fontWeight: "800", fontSize: 15, cursor: "pointer" }}>
             Start Game ({roomState?.players?.length} players)
