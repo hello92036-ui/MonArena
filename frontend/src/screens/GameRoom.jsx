@@ -67,8 +67,9 @@ function GStar({ cx, cy }) {
   return <polygon points={p.join(" ")} fill="#C9B98A" opacity="0.9" />;
 }
 
-// ULTRA-SAFE BULLETPROOF PIECES
+// RESCALED PIECES TO LOOK LIKE REAL LUDO TOKENS
 function GPiece({ cx, cy, color, highlight, onClick }) {
+  // Base piece size was 12, scaling up to 16 to fit the 34px cells better
   return (
     <g onClick={onClick} style={{ 
       cursor: onClick ? "pointer" : "default", 
@@ -76,20 +77,20 @@ function GPiece({ cx, cy, color, highlight, onClick }) {
       transformOrigin: `${cx}px ${cy}px`, 
       transition: 'transform 0.2s' 
     }}>
-      {/* Safe Glow using opacity instead of complex animation */}
-      {highlight && <circle cx={cx} cy={cy} r="18" fill="rgba(255, 255, 255, 0.8)" />}
+      {/* Glow */}
+      {highlight && <circle cx={cx} cy={cy} r="22" fill="rgba(255, 255, 255, 0.8)" />}
       
-      {/* Safe Drop Shadow using a simple shifted circle */}
-      <circle cx={cx} cy={cy + 4} r="12" fill="rgba(0,0,0,0.4)" />
+      {/* Drop Shadow */}
+      <circle cx={cx} cy={cy + 4} r="16" fill="rgba(0,0,0,0.4)" />
       
       {/* Main Base */}
-      <circle cx={cx} cy={cy} r="12" fill="#fff" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+      <circle cx={cx} cy={cy} r="16" fill="#fff" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
       
       {/* Inner Color */}
-      <circle cx={cx} cy={cy} r="10" fill={color} />
+      <circle cx={cx} cy={cy} r="13" fill={color} />
       
-      {/* Safe Highlight (No rotate transforms) */}
-      <circle cx={cx - 3} cy={cy - 3} r="3" fill="#fff" opacity="0.6" />
+      {/* Safe Highlight */}
+      <circle cx={cx - 4} cy={cy - 4} r="4" fill="#fff" opacity="0.6" />
     </g>
   );
 }
