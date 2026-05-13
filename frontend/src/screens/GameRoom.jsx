@@ -92,12 +92,10 @@ function GPiece({ cx, cy, color, rim, highlight, onClick }) {
 }
 function GHome({ h }) {
   const ix = h.x + C, iy = h.y + C, iw = 4 * C;
-  const sl = [{ x: ix + C, y: iy + C }, { x: ix + 3 * C, y: iy + C }, { x: ix + C, y: iy + 3 * C }, { x: ix + 3 * C, y: iy + 3 * C }];
   return (
     <g>
       <rect x={h.x + 3} y={h.y + 3} width={6 * C - 6} height={6 * C - 6} rx="16" fill={`url(#f${h.id})`} stroke="rgba(0,0,0,0.06)" />
       <rect x={ix} y={iy} width={iw} height={iw} rx="10" fill="#FFFCF6" stroke="rgba(0,0,0,0.05)" />
-      {sl.map((s, i) => <GPiece key={i} cx={s.x} cy={s.y} color={h.base} rim={h.lo} />)}
     </g>
   );
 }
@@ -120,10 +118,23 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
   if (roomState?.players) {
     roomState.players.forEach((player, pIdx) => {
       player.pieces.forEach((pos, pieceIdx) => {
-        if (pos === -1) return; // in home base, shown by GHome
+        const isMovable = myPlayerIndex === pIdx && movablePieces?.includes(pieceIdx);
+        if (pos === -1) {
+          const [col, row] = HOME_POS[pIdx][pieceIdx];
+          allPieces.push(
+            <GPiece
+              key={`${pIdx}-${pieceIdx}`}
+              cx={col * C + C / 2} cy={row * C + C / 2}
+              color={PIECE_COLORS[pIdx]}
+              rim={PIECE_RIMS[pIdx]}
+              highlight={isMovable}
+              onClick={isMovable ? () => onPieceClick(pieceIdx) : null}
+            />
+          );
+          return;
+        }
         const xy = getPieceXY(pIdx, pos);
         if (!xy) return;
-        const isMovable = myPlayerIndex === pIdx && movablePieces?.includes(pieceIdx);
         allPieces.push(
           <GPiece
             key={`${pIdx}-${pieceIdx}`}
@@ -214,7 +225,7 @@ export function GameRoom({ room, onLeave }) {
   // Figure out which player index I am
   const myPlayerIndex = roomState?.players?.findIndex(p => p.id?.toLowerCase() === address?.toLowerCase()) ?? -1;
   const isMyTurn = roomState?.started && roomState?.players?.[roomState?.turn]?.id?.toLowerCase() === address?.toLowerCase();
-  const hasRolled = roomState?.lastDice !== null && isMyTurn;
+  const hasRolled = movablePieces.length > 0 && isMyTurn;
 
   // Connect socket
   useEffect(() => {
