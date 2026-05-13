@@ -3,14 +3,13 @@ import { memo, useRef, useEffect, useState } from "react";
 export const Dice3D = memo(({ face, rolling, size }) => {
   const tz = size / 2;
   const rot = useRef({ x: 0, y: 0 });
-  const [trans, setTrans] = useState(`scale(1) translateY(0px) rotateX(0deg) rotateY(0deg)`);
+  const [trans, setTrans] = useState(`rotateX(0deg) rotateY(0deg)`);
 
   useEffect(() => {
     if (rolling) {
-      rot.current.x += 1080;
-      rot.current.y += 1440;
-      // Pops up and scales during the roll
-      setTrans(`scale(1.5) translateY(-20px) rotateX(${rot.current.x}deg) rotateY(${rot.current.y}deg)`);
+      rot.current.x += 720;
+      rot.current.y += 1080;
+      setTrans(`rotateX(${rot.current.x}deg) rotateY(${rot.current.y}deg)`);
     } else {
       let tx = 0, ty = 0;
       switch(face) {
@@ -21,20 +20,11 @@ export const Dice3D = memo(({ face, rolling, size }) => {
         case 5: tx = -90; ty = 0; break;
         case 2: tx = 90; ty = 0; break;
       }
-      
-      // Strict forward-only rotation math
-      const baseXP = Math.floor(rot.current.x / 360) * 360;
-      const baseYP = Math.floor(rot.current.y / 360) * 360;
-      let nextX = baseXP + tx;
-      let nextY = baseYP + ty;
-      if (nextX < rot.current.x) nextX += 360;
-      if (nextY < rot.current.y) nextY += 360;
-      
-      rot.current.x = nextX;
-      rot.current.y = nextY;
-      
-      // Slams back down to the board
-      setTrans(`scale(1) translateY(0px) rotateX(${nextX}deg) rotateY(${nextY}deg)`);
+      const targetX = tx + Math.floor(rot.current.x / 360) * 360;
+      const targetY = ty + Math.floor(rot.current.y / 360) * 360;
+      rot.current.x = targetX;
+      rot.current.y = targetY;
+      setTrans(`rotateX(${targetX}deg) rotateY(${targetY}deg)`);
     }
   }, [face, rolling]);
 
@@ -48,10 +38,10 @@ export const Dice3D = memo(({ face, rolling, size }) => {
   };
 
   return (
-    <div style={{ width: size, height: size, perspective: size * 4 }}>
+    <div style={{ width: size, height: size, perspective: size * 4, zIndex: 100 }}>
       <div style={{
         width: '100%', height: '100%', position: 'relative', transformStyle: 'preserve-3d',
-        transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        transition: 'transform 0.4s ease-out',
         transform: trans
       }}>
         {[
