@@ -1,8 +1,8 @@
 import { COMMON_PATH, HOME_STRETCHES, BASE_POSITIONS } from './gridMap';
 
-const Piece = ({ color, canClick, number }) => (
+const Piece = ({ color, canClick }) => (
   <div style={{
-    width: '85%', height: '85%', position: 'relative',
+    width: '90%', height: '90%', position: 'relative',
     filter: canClick ? `drop-shadow(0 0 6px white)` : 'drop-shadow(0 4px 4px rgba(0,0,0,0.4))',
     transform: canClick ? 'scale(1.15) translateY(-2px)' : 'scale(1)',
     transition: 'all 0.2s', zIndex: 10
@@ -12,7 +12,6 @@ const Piece = ({ color, canClick, number }) => (
       <circle cx="50" cy="50" r="38" fill={color} stroke="rgba(0,0,0,0.15)" strokeWidth="4"/>
       <circle cx="50" cy="50" r="22" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="3"/>
       <ellipse cx="38" cy="30" rx="12" ry="6" fill="#fff" opacity="0.6" transform="rotate(-30 38 30)"/>
-      <text x="50" y="55" fontFamily="Arial" fontSize="24" fontWeight="bold" fill="#fff" textAnchor="middle" dominantBaseline="middle" opacity="0.8">{number}</text>
     </svg>
   </div>
 );
@@ -26,14 +25,8 @@ const BaseArea = ({ color, r, c }) => (
   }}>
     <div style={{
       width: '65%', height: '65%', backgroundColor: '#fff', borderRadius: '15%',
-      display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr',
-      gap: '15%', padding: '15%', boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-    }}>
-       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
-       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
-       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
-       <div style={{ borderRadius: '50%', border: `5px solid ${color}`, boxShadow: 'inset 0 3px 5px rgba(0,0,0,0.3)' }} />
-    </div>
+      boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+    }} />
   </div>
 );
 
@@ -72,12 +65,10 @@ export default function Board({ room, socket, roomId, userId }) {
   const getGridPosition = (playerIndex, pieceIndex, pos) => {
     if (pos === -1) return BASE_POSITIONS[playerIndex][pieceIndex];
     if (pos === 57) return { r: 7, c: 7 }; // Goal
-    // Logic: 0-50 are perimeter steps (51 total cells)
     if (pos < 51) {
       const globalPos = (pos + START_OFFSETS[playerIndex]) % 52;
       return COMMON_PATH[globalPos];
     }
-    // Logic: 51-56 are home stretch steps
     return HOME_STRETCHES[playerIndex][pos - 51];
   };
 
@@ -113,15 +104,13 @@ export default function Board({ room, socket, roomId, userId }) {
           );
         })}
 
-        {/* Home Bases matching your specific indices */}
-        <BaseArea color="#4dff4d" r={1} c={1} />    {/* Green Top-Left */}
-        <BaseArea color="#ffd24d" r={1} c={10} />   {/* Yellow Top-Right */}
-        <BaseArea color="#ff4d4d" r={10} c={1} />   {/* Red Bottom-Left */}
-        <BaseArea color="#4d4dff" r={10} c={10} />  {/* Blue Bottom-Right */}
+        <BaseArea color="#4dff4d" r={1} c={1} />
+        <BaseArea color="#ffd24d" r={1} c={10} />
+        <BaseArea color="#ff4d4d" r={10} c={1} />
+        <BaseArea color="#4d4dff" r={10} c={10} />
 
         <CenterGoal />
 
-        {/* Pieces */}
         {room.players.map((player, pIndex) =>
           player.pieces.map((pos, pieceIndex) => {
             const { r, c } = getGridPosition(pIndex, pieceIndex, pos);
@@ -136,7 +125,7 @@ export default function Board({ room, socket, roomId, userId }) {
                   cursor: canClick ? "pointer" : "default"
                 }}
               >
-                <Piece color={colors[pIndex]} canClick={canClick} number={pieceIndex + 1} />
+                <Piece color={colors[pIndex]} canClick={canClick} />
               </div>
             );
           })
