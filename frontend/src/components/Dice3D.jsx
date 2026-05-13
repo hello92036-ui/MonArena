@@ -1,27 +1,48 @@
-import { memo } from "react";
+import { memo, useRef, useEffect, useState } from "react";
 
 export const Dice3D = memo(({ face, rolling, size }) => {
   const tz = size / 2;
-  
-  const getTransform = () => {
-    if (rolling) return `rotateX(720deg) rotateY(720deg) rotateZ(360deg)`;
-    switch(face) {
-      case 1: return 'rotateX(0deg) rotateY(0deg)';
-      case 6: return 'rotateX(180deg) rotateY(0deg)';
-      case 3: return 'rotateX(0deg) rotateY(-90deg)';
-      case 4: return 'rotateX(0deg) rotateY(90deg)';
-      case 5: return 'rotateX(-90deg) rotateY(0deg)';
-      case 2: return 'rotateX(90deg) rotateY(0deg)';
-      default: return 'rotateX(0deg) rotateY(0deg)';
+  const rotRef = useRef({ x: 0, y: 0 });
+  const [trans, setTrans] = useState(`rotateX(0deg) rotateY(0deg)`);
+
+  useEffect(() => {
+    if (rolling) {
+      rotRef.current.x += 720;
+      rotRef.current.y += 1080;
+      setTrans(`rotateX(${rotRef.current.x}deg) rotateY(${rotRef.current.y}deg)`);
+    } else {
+      let tx = 0, ty = 0;
+      switch(face) {
+        case 1: tx = 0; ty = 0; break;
+        case 6: tx = 180; ty = 0; break;
+        case 3: tx = 0; ty = -90; break;
+        case 4: tx = 0; ty = 90; break;
+        case 5: tx = -90; ty = 0; break;
+        case 2: tx = 90; ty = 0; break;
+      }
+      const targetX = tx + Math.ceil(rotRef.current.x / 360) * 360;
+      const targetY = ty + Math.ceil(rotRef.current.y / 360) * 360;
+      rotRef.current.x = targetX;
+      rotRef.current.y = targetY;
+      setTrans(`rotateX(${targetX}deg) rotateY(${targetY}deg)`);
     }
+  }, [face, rolling]);
+
+  const dots = {
+    1: [{ x: '42%', y: '42%' }],
+    2: [{ x: '20%', y: '20%' }, { x: '64%', y: '64%' }],
+    3: [{ x: '20%', y: '20%' }, { x: '42%', y: '42%' }, { x: '64%', y: '64%' }],
+    4: [{ x: '20%', y: '20%' }, { x: '64%', y: '20%' }, { x: '20%', y: '64%' }, { x: '64%', y: '64%' }],
+    5: [{ x: '20%', y: '20%' }, { x: '64%', y: '20%' }, { x: '42%', y: '42%' }, { x: '20%', y: '64%' }, { x: '64%', y: '64%' }],
+    6: [{ x: '20%', y: '12%' }, { x: '64%', y: '12%' }, { x: '20%', y: '42%' }, { x: '64%', y: '42%' }, { x: '20%', y: '72%' }, { x: '64%', y: '72%' }]
   };
 
   return (
     <div style={{ width: size, height: size, perspective: size * 4 }}>
       <div style={{
         width: '100%', height: '100%', position: 'relative', transformStyle: 'preserve-3d',
-        transition: rolling ? 'transform 0.4s linear' : 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        transform: getTransform()
+        transition: 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        transform: trans
       }}>
         {[
           { f: 1, t: `translateZ(${tz}px)` }, { f: 6, t: `rotateX(180deg) translateZ(${tz}px)` },
@@ -30,10 +51,18 @@ export const Dice3D = memo(({ face, rolling, size }) => {
         ].map(({ f, t }) => (
           <div key={f} style={{
             position: 'absolute', width: '100%', height: '100%', background: '#fff',
-            border: '2px solid #D9CDB1', borderRadius: '15%', display: 'flex',
-            justifyContent: 'center', alignItems: 'center', fontSize: size * 0.4,
-            fontWeight: 'bold', color: '#1a1f3a', transform: t, backfaceVisibility: 'hidden'
-          }}>{f}</div>
+            border: '1.5px solid #D9CDB1', borderRadius: '15%', transform: t, backfaceVisibility: 'hidden',
+            boxShadow: 'inset 0 0 8px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ position: 'absolute', inset: '2px', background: '#FFF8EC', borderRadius: '12%' }}>
+              {dots[f].map((pos, i) => (
+                <div key={i} style={{
+                  position: 'absolute', width: '16%', height: '16%', background: '#1a1f3a', 
+                  borderRadius: '50%', left: pos.x, top: pos.y
+                }} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
