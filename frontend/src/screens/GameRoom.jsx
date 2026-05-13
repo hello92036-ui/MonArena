@@ -20,7 +20,6 @@ const HOMES = [
   { id: "b", base: "#3DA9FF", hi: "#7CC4FF", lo: "#1D7BCB", x: 9 * C, y: 9 * C },
 ];
 
-// PERMANENT STAR FIX: {c:2,r:8} and {c:12,r:6}
 const SAFE_CELLS = [{ c:1,r:6},{c:8,r:1},{c:13,r:8},{c:6,r:13},{c:2,r:8},{c:6,r:2},{c:12,r:6},{c:8,r:12}];
 const ENTRY_CELLS = [{ x:C,y:6*C,f:"#FF5A5F"},{x:8*C,y:C,f:"#34D399"},{x:13*C,y:8*C,f:"#FFC23D"},{x:6*C,y:13*C,f:"#3DA9FF"}];
 
@@ -54,8 +53,8 @@ function getPieceXY(playerIndex, relPos) {
   return { x: col * C + C / 2, y: row * C + C / 2 };
 }
 
-function GCell({ x, y, fill = "#FFFDF8", stroke = "#E7DFD0" }) {
-  return <rect x={x + 1} y={y + 1} width={C - 2} height={C - 2} rx="4" fill={fill} stroke={stroke} strokeWidth="0.8" />;
+function GCell({ x, y, fill = "#FFFFFF", stroke = "#D1C7B3" }) {
+  return <rect x={x + 1} y={y + 1} width={C - 2} height={C - 2} rx="4" fill={fill} stroke={stroke} strokeWidth="1.2" />;
 }
 
 function GStar({ cx, cy }) {
@@ -68,16 +67,14 @@ function GStar({ cx, cy }) {
   return <polygon points={p.join(" ")} fill="#C9B98A" opacity="0.9" />;
 }
 
-// PREMIUM LUDO KING PIECES
-function GPiece({ cx, cy, color, highlight, onClick }) {
+function GPiece({ cx, cy, color, highlight, onClick, ghost }) {
   return (
     <g onClick={onClick} style={{ 
       cursor: onClick ? "pointer" : "default", 
-      filter: highlight ? `drop-shadow(0 0 8px white) drop-shadow(0 0 12px ${color})` : 'drop-shadow(0 5px 5px rgba(0,0,0,0.5))', 
-      transform: highlight ? 'scale(1.2)' : 'scale(1)', 
+      transform: highlight ? 'scale(1.15)' : 'scale(1)', 
       transformOrigin: `${cx}px ${cy}px`, 
       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' 
-    }}>
+    }} filter={highlight ? "url(#glowFilter)" : "url(#shadowFilter)"} opacity={ghost ? 0.3 : 1}>
       <circle cx={cx} cy={cy} r="13" fill="#fff" stroke="rgba(0,0,0,0.15)" strokeWidth="1.5" />
       <circle cx={cx} cy={cy} r="10.5" fill={color} />
       <circle cx={cx} cy={cy} r="6" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
@@ -86,15 +83,12 @@ function GPiece({ cx, cy, color, highlight, onClick }) {
   );
 }
 
-// PREMIUM BASES WITHOUT FAKE PIECES BLOCKING THE VIEW
 function GHome({ h }) {
   const ix = h.x + C, iy = h.y + C;
-  const sl = [{ x: ix + C, y: iy + C }, { x: ix + 3 * C, y: iy + C }, { x: ix + C, y: iy + 3 * C }, { x: ix + 3 * C, y: iy + 3 * C }];
   return (
     <g>
       <rect x={h.x + 3} y={h.y + 3} width={6 * C - 6} height={6 * C - 6} rx="16" fill={h.base} stroke="rgba(0,0,0,0.2)" strokeWidth="2" />
-      <rect x={ix - C*0.5} y={iy - C*0.5} width={5 * C} height={5 * C} rx="12" fill="#fff" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.3))" />
-      {sl.map((s, i) => <circle key={`p-${i}`} cx={s.x} cy={s.y} r="14" fill="none" stroke={h.base} strokeWidth="3" opacity="0.3" />)}
+      <rect x={ix - C*0.5} y={iy - C*0.5} width={5 * C} height={5 * C} rx="12" fill="#FFFFFF" filter="url(#shadowFilter)" />
     </g>
   );
 }
@@ -114,31 +108,33 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
   ];
 
   const allPieces = [];
+  
+  // Draw ghost pieces for empty slots so the board doesn't look empty
+  HOMES.forEach((h, pIdx) => {
+    const isActive = roomState?.players?.[pIdx];
+    if (!isActive) {
+      const hx = h.x + C, hy = h.y + C;
+      const hpts = [[hx+C,hy+C],[hx+3*C,hy+C],[hx+C,hy+3*C],[hx+3*C,hy+3*C]];
+      for(let i=0; i<4; i++) {
+        allPieces.push(<GPiece key={`ghost-${pIdx}-${i}`} cx={hpts[i][0]} cy={hpts[i][1]} color={PIECE_COLORS[pIdx]} ghost={true} />);
+      }
+    }
+  });
+
   if (roomState?.players) {
     roomState.players.forEach((player, pIdx) => {
       player.pieces.forEach((pos, pieceIdx) => {
         const isMovable = myPlayerIndex === pIdx && movablePieces?.includes(pieceIdx);
         if (pos === -1) {
-          const hx = HOMES[pIdx].x + C;
-          const hy = HOMES[pIdx].y + C;
+          const hx = HOMES[pIdx].x + C, hy = HOMES[pIdx].y + C;
           const hpts = [[hx+C,hy+C],[hx+3*C,hy+C],[hx+C,hy+3*C],[hx+3*C,hy+3*C]];
           const [pcx, pcy] = hpts[pieceIdx] || hpts[0];
-          allPieces.push(
-            <GPiece
-              key={`${pIdx}-${pieceIdx}`} cx={pcx} cy={pcy} color={PIECE_COLORS[pIdx]}
-              highlight={isMovable} onClick={isMovable ? () => onPieceClick(pieceIdx) : null}
-            />
-          );
+          allPieces.push(<GPiece key={`${pIdx}-${pieceIdx}`} cx={pcx} cy={pcy} color={PIECE_COLORS[pIdx]} highlight={isMovable} onClick={isMovable ? () => onPieceClick(pieceIdx) : null} />);
           return;
         }
         const xy = getPieceXY(pIdx, pos);
         if (!xy) return;
-        allPieces.push(
-          <GPiece
-            key={`${pIdx}-${pieceIdx}`} cx={xy.x} cy={xy.y} color={PIECE_COLORS[pIdx]}
-            highlight={isMovable} onClick={isMovable ? () => onPieceClick(pieceIdx) : null}
-          />
-        );
+        allPieces.push(<GPiece key={`${pIdx}-${pieceIdx}`} cx={xy.x} cy={xy.y} color={PIECE_COLORS[pIdx]} highlight={isMovable} onClick={isMovable ? () => onPieceClick(pieceIdx) : null} />);
       });
     });
   }
@@ -146,13 +142,19 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
   return (
     <svg viewBox={`0 0 ${BW} ${BW}`} width={size} height={size} style={{ display: "block", borderRadius: 16, boxShadow: "0 16px 48px -12px rgba(40,30,20,0.3)" }}>
       <defs>
-        <linearGradient id="lbg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FFFDF8" /><stop offset="100%" stopColor="#F1E7D3" /></linearGradient>
+        <filter id="shadowFilter" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.4" />
+        </filter>
+        <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#FFF" floodOpacity="1" />
+          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
+        </filter>
       </defs>
-      <rect width={BW} height={BW} rx="18" fill="url(#lbg2)" />
-      <rect x="3" y="3" width={BW - 6} height={BW - 6} rx="14" fill="#FFFDF8" stroke="#EAD9B6" strokeWidth="1" />
+      <rect width={BW} height={BW} rx="18" fill="#EFE9D9" />
+      <rect x="3" y="3" width={BW - 6} height={BW - 6} rx="14" fill="#EFE9D9" stroke="#C9BEA8" strokeWidth="2" />
       {pc.map((c, i) => <GCell key={i} x={c.x} y={c.y} />)}
-      {lanes.map((l, li) => l.cc.map((c, i) => <GCell key={"l" + li + i} x={c.x} y={c.y} fill={l.f} stroke="rgba(0,0,0,0.04)" />))}
-      {ENTRY_CELLS.map((e, i) => <GCell key={"e" + i} x={e.x} y={e.y} fill={e.f} stroke="rgba(0,0,0,0.04)" />)}
+      {lanes.map((l, li) => l.cc.map((c, i) => <GCell key={"l" + li + i} x={c.x} y={c.y} fill={l.f} stroke="rgba(0,0,0,0.08)" />))}
+      {ENTRY_CELLS.map((e, i) => <GCell key={"e" + i} x={e.x} y={e.y} fill={e.f} stroke="rgba(0,0,0,0.08)" />)}
       {SAFE_CELLS.map((s, i) => <GStar key={i} cx={s.c * C + C / 2} cy={s.r * C + C / 2} />)}
       {HOMES.map(h => <GHome key={h.id} h={h} />)}
       <g transform={`translate(${6 * C},${6 * C})`}>
@@ -163,7 +165,7 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
         <line x1="0" y1="0" x2={3*C} y2={3*C} stroke="rgba(0,0,0,0.2)" strokeWidth="2"/>
         <line x1={3*C} y1="0" x2="0" y2={3*C} stroke="rgba(0,0,0,0.2)" strokeWidth="2"/>
         <rect width={3*C} height={3*C} fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="3"/>
-        <circle cx={1.5 * C} cy={1.5 * C} r="9" fill="#FFFDF8" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))" />
+        <circle cx={1.5 * C} cy={1.5 * C} r="9" fill="#FFF" filter="url(#shadowFilter)" />
       </g>
       {allPieces}
     </svg>
