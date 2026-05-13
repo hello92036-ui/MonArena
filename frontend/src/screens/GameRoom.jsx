@@ -67,49 +67,47 @@ function GStar({ cx, cy }) {
   return <polygon points={p.join(" ")} fill="#C9B98A" opacity="0.9" />;
 }
 
+// ULTRA-SAFE BULLETPROOF PIECES
 function GPiece({ cx, cy, color, highlight, onClick }) {
   return (
     <g onClick={onClick} style={{ 
       cursor: onClick ? "pointer" : "default", 
       transform: highlight ? 'scale(1.15) translateY(-3px)' : 'scale(1)', 
       transformOrigin: `${cx}px ${cy}px`, 
-      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' 
+      transition: 'transform 0.2s' 
     }}>
-      {/* Pure SVG Animated Glow (Replaces buggy filter) */}
-      {highlight && <circle cx={cx} cy={cy} r="18" fill="rgba(255, 255, 255, 0.7)" style={{ animation: "pulseGlow 1s infinite alternate" }} />}
+      {/* Safe Glow using opacity instead of complex animation */}
+      {highlight && <circle cx={cx} cy={cy} r="18" fill="rgba(255, 255, 255, 0.8)" />}
       
-      {/* Pure SVG Shadow underneath */}
-      <circle cx={cx} cy={cy + 4} r="13" fill="rgba(0,0,0,0.35)" />
+      {/* Safe Drop Shadow using a simple shifted circle */}
+      <circle cx={cx} cy={cy + 4} r="12" fill="rgba(0,0,0,0.4)" />
       
-      {/* Main Piece Body */}
-      <circle cx={cx} cy={cy} r="13" fill="#fff" stroke="rgba(0,0,0,0.15)" strokeWidth="1.5" />
-      <circle cx={cx} cy={cy} r="10.5" fill={color} />
-      <circle cx={cx} cy={cy} r="6" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
-      <ellipse cx={cx-3} cy={cy-4} rx="3.5" ry="2" fill="#fff" opacity="0.8" transform={`rotate(-45 ${cx-3} ${cy-4})`} />
+      {/* Main Base */}
+      <circle cx={cx} cy={cy} r="12" fill="#fff" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+      
+      {/* Inner Color */}
+      <circle cx={cx} cy={cy} r="10" fill={color} />
+      
+      {/* Safe Highlight (No rotate transforms) */}
+      <circle cx={cx - 3} cy={cy - 3} r="3" fill="#fff" opacity="0.6" />
     </g>
   );
 }
 
 function GHome({ h }) {
-  // Mathematically perfect padding (1.2 * C = 40.8px) and size (3.6 * C = 122.4px)
-  // This perfectly centers a 3.6x3.6 box inside a 6x6 base.
   const wPad = C * 1.2;
   const wSize = C * 3.6;
   const c1x = h.x + 2*C, c1y = h.y + 2*C;
   const c2x = h.x + 4*C, c2y = h.y + 2*C;
   const c3x = h.x + 2*C, c3y = h.y + 4*C;
   const c4x = h.x + 4*C, c4y = h.y + 4*C;
-  const pR = C * 0.45; // Radius of the inner empty pockets
+  const pR = C * 0.45; 
 
   return (
     <g>
-      {/* Colored Outer Box */}
       <rect x={h.x + 2} y={h.y + 2} width={6 * C - 4} height={6 * C - 4} rx="16" fill={h.base} stroke="rgba(0,0,0,0.15)" strokeWidth="2" />
-      {/* Pure SVG Drop Shadow for Inner Box */}
       <rect x={h.x + wPad} y={h.y + wPad + 3} width={wSize} height={wSize} rx="12" fill="rgba(0,0,0,0.15)" />
-      {/* Inner White Box */}
       <rect x={h.x + wPad} y={h.y + wPad} width={wSize} height={wSize} rx="12" fill="#FFFFFF" />
-      {/* Ludo King Style Inner Pockets */}
       <circle cx={c1x} cy={c1y} r={pR} fill={h.base} opacity="0.4" />
       <circle cx={c2x} cy={c2y} r={pR} fill={h.base} opacity="0.4" />
       <circle cx={c3x} cy={c3y} r={pR} fill={h.base} opacity="0.4" />
@@ -156,12 +154,6 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
 
   return (
     <svg viewBox={`0 0 ${BW} ${BW}`} width={size} height={size} style={{ display: "block", borderRadius: 16, boxShadow: "0 16px 48px -12px rgba(40,30,20,0.3)" }}>
-      <style>{`
-        @keyframes pulseGlow {
-          from { transform: scale(0.9); opacity: 0.5; }
-          to { transform: scale(1.2); opacity: 0.9; }
-        }
-      `}</style>
       <rect width={BW} height={BW} rx="18" fill="#EFE9D9" />
       <rect x="3" y="3" width={BW - 6} height={BW - 6} rx="14" fill="#EFE9D9" stroke="#C9BEA8" strokeWidth="2" />
       {pc.map((c, i) => <GCell key={i} x={c.x} y={c.y} />)}
@@ -177,7 +169,6 @@ function LudoBoardSVG({ size, roomState, myPlayerIndex, onPieceClick, movablePie
         <line x1="0" y1="0" x2={3*C} y2={3*C} stroke="rgba(0,0,0,0.2)" strokeWidth="2"/>
         <line x1={3*C} y1="0" x2="0" y2={3*C} stroke="rgba(0,0,0,0.2)" strokeWidth="2"/>
         <rect width={3*C} height={3*C} fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="3"/>
-        {/* Shadow for Goal Circle */}
         <circle cx={1.5 * C} cy={1.5 * C + 3} r="9" fill="rgba(0,0,0,0.2)" />
         <circle cx={1.5 * C} cy={1.5 * C} r="9" fill="#FFF" />
       </g>
