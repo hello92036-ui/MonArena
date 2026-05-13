@@ -2,7 +2,7 @@ import { useAccount, useBalance } from "wagmi";
 
 export function TopBar({ onProfileClick }) {
   const { address } = useAccount();
-  const { data: balance } = useBalance({ address });
+  const { data: balance } = useBalance({ address, chainId: 143 });
 
   const short = address
     ? `${address.slice(0,6)}…${address.slice(-4)}`
