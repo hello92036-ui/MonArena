@@ -3,113 +3,124 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { io } from "socket.io-client";
 import { parseEther } from "viem";
 
-const BACKEND_URL = "https://monarena.onrender.com";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://monarena.onrender.com";
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
 const ENTRY_FEE = "1";
+const ABI = [{ inputs: [{ internalType: "bytes32", name: "roomId", type: "bytes32" }], name: "bet", outputs: [], stateMutability: "payable", type: "function" }];
 
-const ABI = [
-  { inputs: [{ internalType: "bytes32", name: "roomId", type: "bytes32" }], name: "bet", outputs: [], stateMutability: "payable", type: "function" },
-];
-
-function roomIdToBytes32(roomId) {
-  const hex = Buffer.from(roomId.slice(0, 32).padEnd(32, "\0")).toString("hex");
+function toBytes32(str) {
+  const hex = Array.from(str.slice(0,32).padEnd(32,"\0")).map(c=>c.charCodeAt(0).toString(16).padStart(2,"0")).join("");
   return `0x${hex}`;
 }
 
 export function Lobby({ onNavigate, onJoinRoom }) {
   const { address } = useAccount();
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pendingRoom, setPendingRoom] = useState(null);
-  const [pendingAction, setPendingAction] = useState(null);
+  const [tab, setTab] = useState("main");
+  const [joinCode, setJoinCode] = useState("");
+  const [error, setError] = useState("");
   const socketRef = useRef(null);
+  const pendingRoomRef = useRef(null);
 
-  const { writeContract, data: txHash, isPending: isTxPending } = useWriteContract();
-  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
     const socket = io(BACKEND_URL);
     socketRef.current = socket;
-    socket.on("connect", () => setLoading(false));
-    socket.on("roomsUpdated", (updatedRooms) => setRooms(updatedRooms));
-    socket.on("disconnect", () => setLoading(true));
     return () => socket.disconnect();
   }, []);
 
-  // After tx confirmed, enter the room
   useEffect(() => {
-    if (txConfirmed && pendingRoom && pendingAction) {
-      const { roomId, room } = pendingRoom;
-      if (pendingAction === "create") {
-        socketRef.current?.emit("create-room", { roomId, userId: address });
-      } else {
-        socketRef.current?.emit("join-room", { roomId, userId: address });
-      }
+    if (isSuccess && pendingRoomRef.current) {
+      const { roomId, room, action } = pendingRoomRef.current;
+      socketRef.current?.emit(action === "create" ? "create-room" : "join-room", { roomId, userId: address });
       onJoinRoom(room);
-      setPendingRoom(null);
-      setPendingAction(null);
+      pendingRoomRef.current = null;
     }
-  }, [txConfirmed]);
+  }, [isSuccess]);
 
   const handleCreate = () => {
     const roomId = `room_${Date.now()}`;
-    const room = { id: roomId, _resolvedId: roomId, name: `${address?.slice(0, 6)}'s Arena`, entryFee: ENTRY_FEE };
-    setPendingRoom({ roomId, room });
-    setPendingAction("create");
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: ABI,
-      functionName: "bet",
-      args: [roomIdToBytes32(roomId)],
-      value: parseEther(ENTRY_FEE),
-    });
+    const room = { id: roomId, _resolvedId: roomId, name: `${address?.slice(0,6)}'s Arena`, entryFee: ENTRY_FEE };
+    pendingRoomRef.current = { roomId, room, action: "create" };
+    writeContract({ address: CONTRACT_ADDRESS, abi: ABI, functionName: "bet", args: [toBytes32(roomId)], value: parseEther(ENTRY_FEE) });
   };
 
-  const handleJoin = (room) => {
-    setPendingRoom({ roomId: room.id, room });
-    setPendingAction("join");
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: ABI,
-      functionName: "bet",
-      args: [roomIdToBytes32(room.id)],
-      value: parseEther(String(room.entryFee || ENTRY_FEE)),
-    });
+  const handleJoin = () => {
+    const roomId = joinCode.trim();
+    if (!roomId) { setError("Enter a room code!"); return; }
+    const room = { id: roomId, _resolvedId: roomId, name: "Arena", entryFee: ENTRY_FEE };
+    pendingRoomRef.current = { roomId, room, action: "join" };
+    setError("");
+    writeContract({ address: CONTRACT_ADDRESS, abi: ABI, functionName: "bet", args: [toBytes32(roomId)], value: parseEther(ENTRY_FEE) });
   };
 
   return (
-    <div style={{ padding: "20px", color: "var(--ink)", maxWidth: "500px", margin: "0 auto" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
-        <h1 style={{ fontFamily: "var(--font-display)", fontSize: "28px" }}>The Arena</h1>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "11px", color: "var(--muted)" }}>Entry Fee</div>
-          <div style={{ fontWeight: "800", color: "var(--coral)" }}>{ENTRY_FEE} MON</div>
-        </div>
+    <div style={{ minHeight: "100svh", background: "hsl(36 100% 96%)", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}>
+      <header style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 800 }}>MonArena</span>
+        <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>{address?.slice(0,6)}...{address?.slice(-4)}</div>
       </header>
 
-      <button onClick={handleCreate} disabled={isTxPending}
-        style={{ width: "100%", padding: "16px", borderRadius: "12px", background: isTxPending ? "#999" : "var(--ink)", color: "white", fontWeight: "800", border: "none", marginBottom: "20px", cursor: isTxPending ? "not-allowed" : "pointer" }}>
-        {isTxPending && pendingAction === "create" ? "Approving Transaction..." : "+ Create New Match (1 MON)"}
-      </button>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px 40px" }}>
 
-      <h3 style={{ marginBottom: "12px", fontSize: "14px", textTransform: "uppercase", letterSpacing: "1px" }}>Live Matches</h3>
-      {loading ? <p>Scanning Arena...</p> : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {rooms.length === 0 && <p style={{ color: "var(--muted)" }}>No matches found. Create one!</p>}
-          {rooms.map(room => (
-            <div key={room.id} style={{ background: "white", padding: "15px", borderRadius: "12px", border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: "700" }}>{room.name}</div>
-                <div style={{ fontSize: "12px", color: "var(--muted)" }}>Entry: {room.entryFee} MON</div>
-              </div>
-              <button onClick={() => handleJoin(room)} disabled={isTxPending}
-                style={{ padding: "8px 16px", borderRadius: "8px", background: "var(--coral)", color: "white", border: "none", fontWeight: "700", cursor: "pointer" }}>
-                {isTxPending && pendingAction === "join" ? "..." : "Join"}
-              </button>
+        {tab === "main" && (
+          <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 800, marginBottom: 6 }}>The Arena</div>
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>Entry fee: {ENTRY_FEE} MON per player</div>
             </div>
-          ))}
-        </div>
-      )}
+            <button onClick={() => setTab("create")}
+              style={{ width: "100%", padding: "20px", borderRadius: 16, border: "none", background: "linear-gradient(180deg,hsl(14 100% 70%),hsl(8 95% 60%))", color: "white", fontWeight: 800, fontSize: 18, cursor: "pointer" }}>
+              🎲 Create Room
+            </button>
+            <button onClick={() => setTab("join")}
+              style={{ width: "100%", padding: "20px", borderRadius: 16, border: "2px solid hsl(36 30% 82%)", background: "white", color: "var(--ink)", fontWeight: 800, fontSize: 18, cursor: "pointer" }}>
+              🔗 Join Room
+            </button>
+          </div>
+        )}
+
+        {tab === "create" && (
+          <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 16 }}>
+            <button onClick={() => setTab("main")} style={{ background: "none", border: "none", color: "var(--muted)", fontWeight: 700, cursor: "pointer", alignSelf: "flex-start", fontSize: 14 }}>← Back</button>
+            <div style={{ textAlign: "center", marginBottom: 8 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Create Room</div>
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>Pay {ENTRY_FEE} MON to create. Share the code with your opponent.</div>
+            </div>
+            <div style={{ background: "white", borderRadius: 16, padding: 20, border: "1px solid hsl(36 30% 87%)", textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Entry Fee</div>
+              <div style={{ fontWeight: 800, fontSize: 28, color: "var(--coral)" }}>{ENTRY_FEE} MON</div>
+            </div>
+            <button onClick={handleCreate} disabled={isPending}
+              style={{ width: "100%", padding: "18px", borderRadius: 16, border: "none", background: isPending ? "#999" : "linear-gradient(180deg,hsl(14 100% 70%),hsl(8 95% 60%))", color: "white", fontWeight: 800, fontSize: 16, cursor: isPending ? "not-allowed" : "pointer" }}>
+              {isPending ? "Confirm in Wallet..." : "Pay & Create Room"}
+            </button>
+          </div>
+        )}
+
+        {tab === "join" && (
+          <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 16 }}>
+            <button onClick={() => setTab("main")} style={{ background: "none", border: "none", color: "var(--muted)", fontWeight: 700, cursor: "pointer", alignSelf: "flex-start", fontSize: 14 }}>← Back</button>
+            <div style={{ textAlign: "center", marginBottom: 8 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Join Room</div>
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>Enter the room code from your opponent.</div>
+            </div>
+            <input
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+              placeholder="Enter room code..."
+              style={{ width: "100%", padding: "16px", borderRadius: 12, border: "2px solid hsl(36 30% 82%)", fontSize: 15, fontWeight: 700, fontFamily: "var(--font-body)", background: "white", boxSizing: "border-box", outline: "none" }}
+            />
+            {error && <div style={{ color: "#FF5A5F", fontSize: 13, fontWeight: 700 }}>{error}</div>}
+            <button onClick={handleJoin} disabled={isPending || !joinCode.trim()}
+              style={{ width: "100%", padding: "18px", borderRadius: 16, border: "none", background: isPending ? "#999" : "linear-gradient(180deg,hsl(14 100% 70%),hsl(8 95% 60%))", color: "white", fontWeight: 800, fontSize: 16, cursor: isPending ? "not-allowed" : "pointer" }}>
+              {isPending ? "Confirm in Wallet..." : "Pay & Join Room"}
+            </button>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

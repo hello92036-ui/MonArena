@@ -215,7 +215,7 @@ export function GameRoom({ room, onLeave }) {
   const [status, setStatus] = useState("Waiting for players...");
   const [winData, setWinData] = useState(null);
   const [claiming, setClaiming] = useState(false);
-  const [deposited, setDeposited] = useState(false);
+  const [deposited, setDeposited] = useState(room?._deposited || false);
   const [movablePieces, setMovablePieces] = useState([]);
   const socketRef = useRef(null);
 
@@ -347,9 +347,13 @@ export function GameRoom({ room, onLeave }) {
       {/* Header */}
       <header style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid hsl(36 30% 87%)", background: "white" }}>
         <button onClick={onLeave} style={{ background: "none", border: "none", fontWeight: "700", color: "var(--muted)", fontSize: 14, cursor: "pointer" }}>← Leave</button>
-        <span style={{ fontFamily: "var(--font-display)", fontWeight: "800", fontSize: 16 }}>
-          {room?.name || "Arena"}
-        </span>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: "800", fontSize: 16 }}>{room?.name || "Arena"}</div>
+          <div
+            onClick={() => { navigator.clipboard?.writeText(room?._resolvedId || room?.id || ""); }}
+            style={{ fontSize: 10, color: "var(--coral)", fontWeight: "700", cursor: "pointer", letterSpacing: "0.05em" }}
+          >📋 {(room?._resolvedId || room?.id || "").slice(-8).toUpperCase()}</div>
+        </div>
         <div style={{ fontSize: 12, color: isMyTurn ? "#15A36A" : "var(--muted)", fontWeight: "700", animation: isMyTurn ? "pulse 1.5s infinite" : undefined }}>
           {isMyTurn ? "YOUR TURN" : "WAITING"}
         </div>
