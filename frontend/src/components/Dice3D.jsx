@@ -2,14 +2,15 @@ import { memo, useRef, useEffect, useState } from "react";
 
 export const Dice3D = memo(({ face, rolling, size }) => {
   const tz = size / 2;
-  const rotRef = useRef({ x: 0, y: 0 });
-  const [trans, setTrans] = useState(`rotateX(0deg) rotateY(0deg)`);
+  const rot = useRef({ x: 0, y: 0 });
+  const [trans, setTrans] = useState(`scale(1) translateY(0px) rotateX(0deg) rotateY(0deg)`);
 
   useEffect(() => {
     if (rolling) {
-      rotRef.current.x += 720;
-      rotRef.current.y += 1080;
-      setTrans(`rotateX(${rotRef.current.x}deg) rotateY(${rotRef.current.y}deg)`);
+      rot.current.x += 1080;
+      rot.current.y += 1440;
+      // Pops up and scales during the roll
+      setTrans(`scale(1.5) translateY(-20px) rotateX(${rot.current.x}deg) rotateY(${rot.current.y}deg)`);
     } else {
       let tx = 0, ty = 0;
       switch(face) {
@@ -20,11 +21,20 @@ export const Dice3D = memo(({ face, rolling, size }) => {
         case 5: tx = -90; ty = 0; break;
         case 2: tx = 90; ty = 0; break;
       }
-      const targetX = tx + Math.ceil(rotRef.current.x / 360) * 360;
-      const targetY = ty + Math.ceil(rotRef.current.y / 360) * 360;
-      rotRef.current.x = targetX;
-      rotRef.current.y = targetY;
-      setTrans(`rotateX(${targetX}deg) rotateY(${targetY}deg)`);
+      
+      // Strict forward-only rotation math
+      const baseXP = Math.floor(rot.current.x / 360) * 360;
+      const baseYP = Math.floor(rot.current.y / 360) * 360;
+      let nextX = baseXP + tx;
+      let nextY = baseYP + ty;
+      if (nextX < rot.current.x) nextX += 360;
+      if (nextY < rot.current.y) nextY += 360;
+      
+      rot.current.x = nextX;
+      rot.current.y = nextY;
+      
+      // Slams back down to the board
+      setTrans(`scale(1) translateY(0px) rotateX(${nextX}deg) rotateY(${nextY}deg)`);
     }
   }, [face, rolling]);
 
@@ -41,7 +51,7 @@ export const Dice3D = memo(({ face, rolling, size }) => {
     <div style={{ width: size, height: size, perspective: size * 4 }}>
       <div style={{
         width: '100%', height: '100%', position: 'relative', transformStyle: 'preserve-3d',
-        transition: 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
         transform: trans
       }}>
         {[
